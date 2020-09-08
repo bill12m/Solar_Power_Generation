@@ -3,26 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from sklearn.model_selection import TimeSeriesSplit
 from sklearn import linear_model
-
-#Pre-Made function with credit to 
-#https://grisha.org/blog/2016/02/16/triple-exponential-smoothing-forecasting-part-ii/
-def double_exponential_smoothing(series, alpha, beta):
-    result = [series[0]]
-    for n in range(1, len(series)+1):
-        if n == 1:
-            level, trend = series[0], series[1] - series[0]
-        if n >= len(series): # we are forecasting
-          value = result[-1]
-        else:
-          value = series[n]
-        last_level, level = level, alpha*value + (1-alpha)*(level+trend)
-        trend = beta*(level-last_level) + (1-beta)*trend
-        result.append(level+trend)
-    return result
-
-def determine_best_alpha_beta(series,)
 
 sp.call('clear', shell = True)
 
@@ -31,7 +12,7 @@ plant_1_gen = pd.read_csv('data/Plant_1_Generation_Data.csv')
 plant_1_weather = pd.read_csv('data/Plant_1_Weather_Sensor_Data.csv')
 
 #Drop unneeded columns
-plant_1_gen = plant_1_gen.drop(columns = ['PLANT_ID'], axis = 1)
+plant_1_gen = plant_1_gen.drop(columns = ['PLANT_ID','TOTAL_YIELD'], axis = 1)
 plant_1_weather = plant_1_weather.drop(columns = ['PLANT_ID','SOURCE_KEY'], axis = 1)
 
 #Convert DATE_TIME from object to timestamp
@@ -49,11 +30,19 @@ del(old_source_key,new_sourcekey_num,n)
 
 #Since DAILY_YIELD is a running total, filter plant_1_gen by the timestamp at
 #the end of each day and then sort each inverter in chronological order.
-eod_timestamp = plant_1_gen.where(plant_1_gen['DATE_TIME_AS_STRING'].str.contains('23:45:00')).dropna()
-eod_timestamp = eod_timestamp.sort_values(['SOURCE_KEY', 'DATE_TIME'])
-ax = sns.lineplot(data = eod_timestamp, x = 'DATE_TIME', y = 'DAILY_YIELD',
-                  hue = 'SOURCE_KEY')
+#eod_timestamp = plant_1_gen.where(plant_1_gen['DATE_TIME_AS_STRING'].str.contains('23:45:00')).fillna(method = 'backfill')
+#eod_timestamp = eod_timestamp.sort_values(['SOURCE_KEY', 'DAT E_TIME'])
+#ax = sns.lineplot(data = eod_timestamp, x = 'DATE_TIME', y = 'DAILY_YIELD',
+#                  hue = 'SOURCE_KEY')
 
-df = eod_timestamp.loc[eod_timestamp['SOURCE_KEY'] == 0, ['DAILY_YIELD']]
-series = np.array(df['DAILY_YIELD'].values).tolist()
-result = double_exponential_smoothing(series, alpha = 0.5, beta = 0.5)
+plant_1_gen = plant_1_gen.set_index('DATE_TIME').sort_values(['SOURCE_KEY', 'DATE_TIME'])
+
+eod_timestamp = plant_1_gen.at_time('23:45:00')
+for inverter in plant_1_gen['SOURCE_KEY'].unique():
+    df = plant_1_gen[plant_1_gen['SOURCE_KEY'] == inverter].asfreq('15T')
+    timestamp = df.at_time('23:45:00').fillna(method = 'backfill')
+    differences = eod_timestamp.compare(timestamp, align_axis = 0)
+    eod_timestamp.append(differences)
+eod_timestamp = eod_timestamp.drop_duplicates()
+#daily_sum = df_train[['DC_POWER','AC_POWER']].resample('1D').sum()
+
