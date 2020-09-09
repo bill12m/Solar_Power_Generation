@@ -18,21 +18,27 @@ del(old_source_key,new_sourcekey_num,n)
 #Filter by source_key and fill in missing timestamps
 filter_df_inverter = []
 for inverter in df['SOURCE_KEY'].unique():
-    df_inverter = df[df['SOURCE_KEY'] == inverter].asfreq('15T').fillna(method = 'ffill')
+    df_inverter = df[df['SOURCE_KEY'] == inverter]
     ac = df_inverter['AC_POWER'].resample('1D').sum()
     dc = df_inverter['DC_POWER'].resample('1D').sum()
-
+    daily_yield = df_inverter['DAILY_YIELD'].resample('1D').max()
     
-    df_inverter = df_inverter.at_time('23:45:00').drop(['AC_POWER', 'DC_POWER'], axis = 1).reset_index()
-    df_inverter = df_inverter.set_index(ac).reset_index()
-    df_inverter = df_inverter.set_index(dc).reset_index()
-    
-    filter_df_inverter.append(df_inverter)
+    d = {'SOURCE_KEY':df_inverter['SOURCE_KEY'],
+        'AC_POWER': ac,
+         'DC_POWER': dc,
+         'DAILY_YIELD': daily_yield}
+    new_df = pd.DataFrame(data = d,
+                          index = ac.index)
+    filter_df_inverter.append(new_df)
 
 #Create a new dataframe with the end-of-day yields for every inverter.
 eod = filter_df_inverter[0].reset_index()
 for inverter in range(1,df['SOURCE_KEY'].nunique()):
     df_inverter = filter_df_inverter[inverter].reset_index()
     eod = pd.concat([eod, df_inverter])
-eod = eod.drop('index', axis = 1)
+eod = eod.set_index('DATE_TIME').fillna(method = 'bfill')
+del (inverter, df_inverter, filter_df_inverter, ac, dc)
 
+eod.to_csv('data/Plant_1_End_of_Day.csv')
+    
+    
