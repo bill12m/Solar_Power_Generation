@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn import cluster
 from sklearn import preprocessing
+from sklearn import cluster
 from datetime import time
 
 sp.call('clear', shell = True)
@@ -31,11 +31,11 @@ class PrepGenerationData:
         df.iloc[df.index.indexer_between_time(time(0), time(4)), -3] = 0
         
         #Convert SOURCE_KEY from object to integer we can use
-        new_sourcekey_num = list(np.arange(0,22))
-        old_source_key = list(df['SOURCE_KEY'].unique())
-        for n in range(len(old_source_key)):
-            df = df.replace(old_source_key[n],new_sourcekey_num[n])
-        del(old_source_key,new_sourcekey_num,n)
+        #new_sourcekey_num = list(np.arange(0,22))
+        #old_source_key = list(df['SOURCE_KEY'].unique())
+        #for n in range(len(old_source_key)):
+        #    df = df.replace(old_source_key[n],new_sourcekey_num[n])
+        #del(old_source_key,new_sourcekey_num,n)
         return(df)
 def multi_plot(data= None, row = None, col = None, title='Daily Yield', inverter = None, plant = None):
     cols = data.columns # take all column
@@ -52,30 +52,6 @@ def multi_plot(data= None, row = None, col = None, title='Daily Yield', inverter
     plt.close(gp)
     
 
-plants = [str(1), str(2)]
-for plant in plants:
-    #Import and clean generation data
-    df = PrepGenerationData(('data/Plant_' + plant + '_Generation_Data.csv')).prep_data()
-    
-    #Plot the average DC production per inverter for each plant. AC production
-    #should be comparable
-    df_avg = df.groupby(['SOURCE_KEY','date'])['DC_POWER','AC_POWER'].agg('mean')
-    fig, ax = plt.subplots()
-    ax = sns.FacetGrid(data = df_avg.reset_index(), col = 'SOURCE_KEY', col_wrap = 4)
-    ax.map(sns.histplot, 'DC_POWER', kde = True)
-    
-    #Save figure
-    filename = 'figures/EDA_Bad_Sensors/Avg_DC_Power_per_Inverter/Plant_'+ plant + '.png'
-    ax.savefig(filename)
-    plt.close(fig)
-    
-    #Plot the daily yield per day for each inverter
-    for inverter in df['SOURCE_KEY'].unique():
-        fig, ax = plt.subplots()
-        df_inverter = df[df['SOURCE_KEY'] == inverter]
-        df_daily_yield = df_inverter.pivot('time', 'date', 'DAILY_YIELD').fillna(method = 'bfill', axis = 1)
-        multi_plot(df_daily_yield, row = 9, col = 4, inverter = inverter, plant = plant)
-        
 df = PrepGenerationData('data/Plant_1_Generation_Data.csv').prep_data().append(
         PrepGenerationData('data/Plant_2_Generation_Data.csv').prep_data())
 new_sourcekey_num = list(np.arange(0,df['SOURCE_KEY'].nunique()))

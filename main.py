@@ -2,6 +2,7 @@ import subprocess as sp
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import matplotlib.pyplot as plt
 from sklearn import linear_model
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
@@ -24,8 +25,6 @@ class PrepGenerationData:
             df = df.replace(old_source_key[n],new_sourcekey_num[n])
         del(old_source_key,new_sourcekey_num,n)
         
-        df.iloc[df.index.indexer_between_time(time(0), time(4)), -1] = 0
-            
         #Filter by source_key and fill in missing timestamps
         filter_df_inverter = []
         for inverter in df['SOURCE_KEY'].unique():
@@ -72,17 +71,18 @@ class PrepWeatherData:
         return(new_df)
 
 sp.call('clear', shell = True)
+fig, ax = plt.subplots()
 
 #Import datasets for Plant 1
 eod_df = PrepGenerationData('data/Plant_1_Generation_Data.csv').prep_data()
 
 #ax = sns.lineplot(x = eod_df.index, y = 'DAILY_YIELD',data = eod_df,
 #                  hue = 'SOURCE_KEY')
-#ax.get_figure().savefig('figures/Daily_Yield_for_Inverters_Plant_1.png')
+#ax.savefig('figures/Daily_Yield_for_Inverters_Plant_1.png')
 #ax.get_figure().clf()
 
 #ax = sns.pairplot(data = eod_df)
-#ax.get_figure().savefig('figures/Correlation_Matrix.png')
+#ax.savefig('figures/Correlation_Matrix.png')
 #ax.get_figure().clf()
 
 #Run Ridge Regression on each inverter's data.
@@ -138,9 +138,9 @@ lasso_with_weather_score = np.asarray(lasso_with_weather_score)
 eod_df['mark'] = np.zeros(shape = len(eod_df))
 eod_df['mark'] = eod_df['mark'].mask(eod_df['SOURCE_KEY'] == 0, 1).mask(eod_df['SOURCE_KEY'] == 11, 1)    
 
-#ax2 = sns.lineplot(x = eod_df.index, y = 'DAILY_YIELD', data = eod_df,
+#ax = sns.lineplot(x = 'date', y = 'DAILY_YIELD', data = eod_df,
 #                   hue = eod_df.mark)
-#ax2.get_figure().savefig('figures/Comparing_Underperforming_Inverters.png')
+#ax.savefig('figures/Comparing_Underperforming_Inverters.png')
 #ax2.get_figure().clf()
 
 #Let's test it out on Plant 2
@@ -159,7 +159,7 @@ for inverter in eod_df_2['SOURCE_KEY'].unique():
 df_2_score = np.asarray(df_2_score)
 del(X, X_train, X_val, X_test, eod_df_test, inverter, y, y_train, y_val, y_test)
 
-#ax3 = sns.lineplot(x = eod_df_2.index, y = 'DAILY_YIELD', data = eod_df_2,
+#ax = sns.lineplot(x = eod_df_2.index, y = 'DAILY_YIELD', data = eod_df_2,
 #                  hue = eod_df.SOURCE_KEY, palette = 'husl')
-#ax3.get_figure().savefig('figures/Daily_Yield_for_Inverters_Plant_2.png')
+#ax.savefig('figures/Daily_Yield_for_Inverters_Plant_2.png')
 #ax3.get_figure().clf()
