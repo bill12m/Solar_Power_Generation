@@ -3,40 +3,33 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn import preprocessing
-from sklearn import cluster
-from datetime import time
+from sklearn.preprocessing import Normalizer
+from sklearn.cluster import KMeans, AffinityPropagation
 
 sp.call('clear', shell = True)
 sns.set_theme()
 
-class PrepGenerationData:
+class PrepWeatherData:
     def __init__(self,filename):
         self.filename = filename
     
-    def prep_data(self):        
-        df = pd.read_csv(self.filename).drop(columns = ['PLANT_ID','TOTAL_YIELD'],axis = 1)
+    def prep_data(self):
+        df_weather = pd.read_csv(self.filename).drop(columns = 'PLANT_ID', axis = 1)
+        df_weather['DATE_TIME'] = pd.to_datetime(df_weather['DATE_TIME'], dayfirst = True)
+        #Setting the frequency of a DateTimeIndex creates NaN values
+        #Interpolate the NaNs from the existing data to fill them.
+        df_weather = df_weather.set_index('DATE_TIME').asfreq('15T')
+        df_weather = df_weather.interpolate()
         
-        #Normalize DC_POWER, AC_POWER, and DAILY_YIELD
-        min_max_scaler = preprocessing.MinMaxScaler()
-        df[['DC_POWER','AC_POWER','DAILY_YIELD']] = min_max_scaler.fit_transform(df[['DC_POWER','AC_POWER','DAILY_YIELD']].values)
+        ambient = df_weather['AMBIENT_TEMPERATURE'].resample('1D').mean()
+        module = df_weather['MODULE_TEMPERATURE'].resample('1D').mean()
+        irradiation = df_weather['IRRADIATION'].resample('1D').mean()
         
-        #Convert datetime to correct format, create new columns for date and time
-        #Set datetime as the index
-        df['DATE_TIME'] = pd.to_datetime(df['DATE_TIME'], dayfirst = True)
-        df['date'] = pd.to_datetime(df['DATE_TIME'].dt.date)
-        df['time'] = df['DATE_TIME'].dt.time
-        df = df.sort_values(['SOURCE_KEY', 'DATE_TIME']).set_index('DATE_TIME')
-        #Extra command for cleaning up data from Plant 2
-        df.iloc[df.index.indexer_between_time(time(0), time(4)), -3] = 0
-        
-        #Convert SOURCE_KEY from object to integer we can use
-        #new_sourcekey_num = list(np.arange(0,22))
-        #old_source_key = list(df['SOURCE_KEY'].unique())
-        #for n in range(len(old_source_key)):
-        #    df = df.replace(old_source_key[n],new_sourcekey_num[n])
-        #del(old_source_key,new_sourcekey_num,n)
-        return(df)
+        d = {'AMBIENT_TEMPERATURE': ambient,
+             'MODULE_TEMPERATURE': module,
+             'IRRADIATION': irradiation}
+        new_df = pd.DataFrame(data = d, index = ambient.index)
+        return(new_df)
 def multi_plot(data= None, row = None, col = None, title='Daily Yield', inverter = None, plant = None):
     cols = data.columns # take all column
     gp = plt.figure(figsize=(20,20)) 
@@ -52,21 +45,14 @@ def multi_plot(data= None, row = None, col = None, title='Daily Yield', inverter
     plt.close(gp)
     
 
-df = PrepGenerationData('data/Plant_1_Generation_Data.csv').prep_data().append(
-        PrepGenerationData('data/Plant_2_Generation_Data.csv').prep_data())
+df = pd.read_csv('data/Plant_1_Weather_Sensor_Data.csv').drop(columns = ['PLANT_ID']).append(
+        pd.read_csv('data/Plant_2_Weather_Sensor_Data.csv').drop(columns = ['PLANT_ID']))
+
 new_sourcekey_num = list(np.arange(0,df['SOURCE_KEY'].nunique()))
 old_source_key = list(df['SOURCE_KEY'].unique())
 for n in range(len(old_source_key)):
     df = df.replace(old_source_key[n],new_sourcekey_num[n])
 del(old_source_key,new_sourcekey_num,n)
-        
-
-eod_describe = df.groupby('SOURCE_KEY')['DAILY_YIELD'].describe()
-kmeans = cluster.KMeans(n_clusters = 2, random_state = 12)
-X = eod_describe.values
-kmeans.fit(X)
-
-clustering = cluster.AffinityPropagation(random_state = 12,
-                                         max_iter = 1000).fit(X)
-eod_describe['class'] = clustering.labels_
-class_3 = eod_describe[eod_describe['class'] == 3]
+normalizer = Normalizer()
+df['AMBIENT_TEMPERATURE','MODULE_TEMPERATURE','IRRADIATION'] = normalizer.fit(
+    df[['AMBIENT_TEMPERATURE','MODULE_TEMPERATURE','IRRADIATION']].values)
