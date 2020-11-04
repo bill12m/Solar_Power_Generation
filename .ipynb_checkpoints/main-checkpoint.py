@@ -5,7 +5,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn import linear_model
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import Normalizer, scale
+from sklearn import preprocessing
 from datetime import time
 
 class PrepGenerationData:
@@ -14,10 +14,6 @@ class PrepGenerationData:
     
     def prep_data(self):
         df = pd.read_csv(self.filename).drop(columns = ['PLANT_ID', 'TOTAL_YIELD'], axis = 1)
-        
-        #normalizer = Normalizer()
-        #df[['DC_POWER','AC_POWER','DAILY_YIELD']] = normalizer.fit_transform(df[['DC_POWER','AC_POWER','DAILY_YIELD']].values)
-        
         df['DATE_TIME'] = pd.to_datetime(df['DATE_TIME'], dayfirst = True)
         df = df.sort_values(['SOURCE_KEY', 'DATE_TIME']).set_index('DATE_TIME')
         df.iloc[df.index.indexer_between_time(time(0), time(4)), -1] = 0
@@ -60,11 +56,6 @@ class PrepWeatherData:
     
     def prep_data(self):
         df_weather = pd.read_csv(self.filename).drop(columns = 'PLANT_ID', axis = 1)
-        
-        #normalizer = Normalizer()
-        #df_weather[['AMBIENT_TEMPERATURE','MODULE_TEMPERATURE','IRRADIATION']] = normalizer(
-        #    df_weather[['AMBIENT_TEMPERATURE','MODULE_TEMPERATURE','IRRADIATION']].values)
-        
         df_weather['DATE_TIME'] = pd.to_datetime(df_weather['DATE_TIME'], dayfirst = True)
         df_weather = df_weather.set_index('DATE_TIME').asfreq('15T')
         df_weather = df_weather.interpolate()
@@ -158,8 +149,8 @@ weather_df_2 = PrepWeatherData('data/Plant_2_Weather_Sensor_Data.csv').prep_data
 df_2_score = []
 for inverter in eod_df_2['SOURCE_KEY'].unique():
     eod_df_test = eod_df_2[eod_df_2['SOURCE_KEY'] == inverter].join(weather_df_2)
-    X = scale(eod_df_test.drop(columns = ['SOURCE_KEY', 'DAILY_YIELD']))
-    y = scale(eod_df_test['DAILY_YIELD'])
+    X = preprocessing.scale(eod_df_test.drop(columns = ['SOURCE_KEY', 'DAILY_YIELD']))
+    y = preprocessing.scale(eod_df_test['DAILY_YIELD'])
     X_train, X_test, y_train, y_test = train_test_split(X, y,
                                                         test_size = 0.1, shuffle = False,
                                                         random_state = 12)
