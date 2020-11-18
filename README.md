@@ -1,0 +1,1 @@
+Project looking at data from solar power plants and trying to make predictions from it. Progress can be found in 'Solar_Power_Generation.ipynb'

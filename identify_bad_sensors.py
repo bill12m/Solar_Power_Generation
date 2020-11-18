@@ -101,3 +101,9 @@ eod_describe['class_kmeans'] = kmeans.labels_
 #clustering = AffinityPropagation(random_state = 12,
 #                                         max_iter = 1000).fit(eod_describe.values)
 #eod_describe['class_affinity'] = clustering.labels_
+
+#display(eod_describe[['count','50%','75%','max','class_kmeans']].style.background_gradient(
+#    cmap = 'Blues').background_gradient(cmap = 'Greens', subset = 'class_kmeans'))
+ax = sns.scatterplot(data = eod_describe,
+                    x = 'SOURCE_KEY', y = 'count',
+                    hue = 'class_kmeans')
